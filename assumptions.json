@@ -1,0 +1,64 @@
+{
+  "_readme": "Every number the model uses that is NOT pulled live lives here. Edit this file, not the code. Dollar figures are in $ millions. The reasoning behind each input is in the README under 'Assumptions and why'.",
+
+  "target_ticker": "COST",
+  "peer_tickers": ["WMT", "TGT", "BJ"],
+  "market_index": "^GSPC",
+
+  "fundamentals_fy2026": {
+    "_source": "Costco FY2026 earnings release (Sept 24, 2026). DCF base year.",
+    "revenue": 303200,
+    "operating_income": 11685,
+    "net_income": 9200,
+    "eps_diluted": 20.76,
+    "cash_from_operations": 15825,
+    "capex": 6400,
+    "cash": 20200,
+    "total_debt": 6162,
+    "total_equity": 35803,
+    "interest_expense": 145,
+    "shares_outstanding_mm": 443.27,
+    "reference_price": 922.76,
+    "reference_price_date": "2026-09-25"
+  },
+
+  "wacc_inputs": {
+    "_note": "risk-free rate and beta are replaced by live values when online; the fallbacks are used offline.",
+    "risk_free_rate_fallback": 0.043,
+    "beta_fallback": 0.95,
+    "volatility_fallback": 0.22,
+    "equity_risk_premium": 0.050,
+    "pre_tax_cost_of_debt": 0.045,
+    "tax_rate": 0.24
+  },
+
+  "dcf_base_case": {
+    "_note": "5-year FCFF projection. Reinvestment = change in revenue / sales_to_capital.",
+    "projection_years": 5,
+    "revenue_growth": [0.080, 0.075, 0.070, 0.065, 0.060],
+    "ebit_margin":    [0.0390, 0.0395, 0.0400, 0.0405, 0.0410],
+    "sales_to_capital": 8.0,
+    "terminal_growth": 0.030
+  },
+
+  "scenarios": {
+    "_note": "Monte Carlo draws each input from a triangular distribution (bear, base, bull), labelled by price outcome.",
+    "growth_shift":      {"bear": -0.025, "base": 0.0,   "bull": 0.020},
+    "ebit_margin_shift": {"bear": -0.004, "base": 0.0,   "bull": 0.004},
+    "wacc_shift":        {"bear": 0.010,  "base": 0.0,   "bull": -0.0075},
+    "terminal_growth":   {"bear": 0.020,  "base": 0.030, "bull": 0.035}
+  },
+
+  "rating_rule": {
+    "_note": "Rating from target vs price: BUY above +10%, SELL below -10%, otherwise HOLD.",
+    "buy_above": 0.10,
+    "sell_below": -0.10
+  },
+
+  "simulation": {
+    "n_runs": 10000,
+    "lookback_trading_days": 252,
+    "horizon_trading_days": 252,
+    "random_seed": 42
+  }
+}
