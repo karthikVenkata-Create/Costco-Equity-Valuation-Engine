@@ -11,7 +11,8 @@ Pipeline
                    COST + peers (WMT, TGT, BJ) from Yahoo Finance via yfinance
   2. COMPS         trading-comps table and the price COST would have at peer multiples
   3. WACC          CAPM cost of equity from the live 10y Treasury yield and a beta
-                   regressed on the last 252 trading days against the S&P 500
+                   from 2 years of weekly returns vs the S&P 500 (adjusted toward 1,
+                   with a sanity check)
   4. DCF           5-year FCFF projection + Gordon-growth terminal value,
                    WACC x terminal-growth sensitivity grid
   5. REVERSE DCF   the revenue growth the current share price is silently assuming
@@ -111,6 +112,36 @@ def _num(info: dict, key: str) -> float:
         return float("nan")
 
 
+BETA_RANGE = (0.3, 2.0)   # outside this, a large-cap retailer's beta isn't believable
+
+
+def estimate_beta(weekly: pd.DataFrame, stock: str, index: str,
+                  yahoo_beta: float, fallback: float) -> tuple[float, str]:
+    """Blume-adjusted beta from 2 years of weekly returns, with a sanity check.
+
+    Raw regression betas bounce around a lot, so the standard fix is to pull
+    them toward 1 (adjusted = 0.67 * raw + 0.33). If the result still looks
+    unrealistic, fall back to Yahoo's published beta, then to assumptions.json.
+    """
+    lo, hi = BETA_RANGE
+    raw = float("nan")
+    try:
+        r = np.log(weekly[[stock, index]]).diff().dropna()
+        if len(r) >= 52:
+            cov = np.cov(r[stock], r[index])
+            raw = float(cov[0, 1] / cov[1, 1])
+    except Exception:
+        pass
+    if not np.isnan(raw):
+        adj = 0.67 * raw + 0.33
+        if lo <= adj <= hi:
+            return adj, f"2-yr weekly vs S&P 500, adjusted; raw {raw:.2f}"
+    note = "n/a" if np.isnan(raw) else f"{raw:.2f}"
+    if not np.isnan(yahoo_beta) and lo <= yahoo_beta <= hi:
+        return yahoo_beta, f"Yahoo; regression gave {note}"
+    return fallback, f"fallback; regression gave {note}"
+
+
 def fetch_live(cfg: dict, lookback: int) -> MarketData:
     import yfinance as yf  # only needed online
 
@@ -128,19 +159,25 @@ def fetch_live(cfg: dict, lookback: int) -> MarketData:
                           _num(info, "trailingPE"), _num(info, "enterpriseToEbitda"),
                           _num(info, "enterpriseToRevenue"))
 
+    # Daily prices -> realized volatility for the price simulation
     hist = yf.download([target, index], period="14mo", auto_adjust=True,
                        progress=False)["Close"].dropna()
     rets = np.log(hist).diff().dropna().tail(lookback)
-    cov = np.cov(rets[target], rets[index])
-    beta = float(cov[0, 1] / cov[1, 1])
     vol = float(rets[target].std(ddof=1) * np.sqrt(TRADING_DAYS))
+
+    # Weekly prices over 2 years -> beta (daily betas are too noisy to trust)
+    weekly = yf.download([target, index], period="2y", interval="1wk", auto_adjust=True,
+                         progress=False)["Close"].dropna()
+    yahoo_beta = _num(yf.Ticker(target).info, "beta")
+    beta, beta_source = estimate_beta(weekly, target, index, yahoo_beta,
+                                      cfg["wacc_inputs"]["beta_fallback"])
 
     tnx = yf.Ticker("^TNX").history(period="5d")["Close"].dropna()   # quoted in percent
     rf = float(tnx.iloc[-1]) / 100 if len(tnx) else cfg["wacc_inputs"]["risk_free_rate_fallback"]
 
     q = quotes[target]
     return MarketData("live", str(hist.index[-1].date()), q.price, q.market_cap, rf, beta, vol,
-                      f"regressed vs S&P 500, last {lookback} days", quotes)
+                      beta_source, quotes)
 
 
 def build_offline(cfg: dict) -> MarketData:

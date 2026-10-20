@@ -51,7 +51,7 @@ Each run does roughly this:
 
 - Pulls prices and multiples for Costco, Walmart, Target and BJ's, plus a year of daily prices and the 10-year Treasury yield
 - Builds a comps table and shows what Costco would be worth at its peers' P/E and EV/EBITDA
-- Calculates WACC using the current Treasury yield and a beta I regress from the last 252 trading days against the S&P 500
+- Calculates WACC using the current Treasury yield and a beta from two years of weekly returns against the S&P 500
 - Runs a 5-year DCF with a terminal value and a sensitivity table
 - Runs the reverse DCF described above
 - Runs two separate Monte Carlo simulations
@@ -70,7 +70,7 @@ All the inputs are in [`assumptions.json`](assumptions.json), so anyone can chan
 - **Operating margin, 3.9% rising to 4.1%:** It was 3.85% in FY2026. I allowed a small increase from membership fees and scale, but Costco keeps product margins thin on purpose, so I didn't want to assume much.
 - **Sales-to-capital, 8x:** This controls how much Costco has to reinvest to grow. Right now its revenue is about 14x its invested capital, partly because suppliers fund so much of its inventory. I used 8x to be conservative about new warehouse costs. At 14x the value only goes up to about $429, so this doesn't change the conclusion.
 - **Tax rate, 24%:** Close to Costco's recent effective rate.
-- **Discount rate:** Live Treasury yield, live regressed beta (0.95 if offline), and a 5% equity risk premium.
+- **Discount rate:** Live Treasury yield, a 5% equity risk premium, and a beta from two years of weekly returns, adjusted toward 1 like most data providers do. My first version used one year of daily returns and got a beta of -0.17, which would mean Costco moves opposite to the market. That's not realistic, so the model now checks for it and falls back to Yahoo's published beta if the number looks off.
 - **Long-term growth, 3%:** Roughly in line with long-run nominal GDP.
 - **Rating rule:** BUY above +10% upside, SELL below -10%, HOLD in between.
 
