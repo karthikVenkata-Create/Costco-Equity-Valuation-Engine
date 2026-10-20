@@ -352,8 +352,11 @@ def save_charts(out: Path, price: float, target: float, mc_dcf: np.ndarray,
     fig, ax = plt.subplots(figsize=(8, 0.6 * len(ranges) + 1.6), dpi=160)
     for i, (label, lo, hi) in enumerate(reversed(ranges)):
         ax.barh(i, hi - lo, left=lo, height=0.5, color=ACCENT_LIGHT, edgecolor=ACCENT)
-        ax.text(lo - 8, i, f"${lo:,.0f}", ha="right", va="center", color=INK, fontsize=9)
-        ax.text(hi + 8, i, f"${hi:,.0f}", ha="left", va="center", color=INK, fontsize=9)
+        if hi - lo < 20:   # too narrow for two labels
+            ax.text(lo - 8, i, f"${lo:,.0f}-{hi:,.0f}", ha="right", va="center", color=INK, fontsize=9)
+        else:
+            ax.text(lo - 8, i, f"${lo:,.0f}", ha="right", va="center", color=INK, fontsize=9)
+            ax.text(hi + 8, i, f"${hi:,.0f}", ha="left", va="center", color=INK, fontsize=9)
     ax.set_yticks(range(len(ranges)), [r[0] for r in reversed(ranges)])
     ax.axvline(price, color=WARN, lw=2)
     ax.axvline(target, color=INK, lw=1.5, ls="--")
@@ -361,7 +364,7 @@ def save_charts(out: Path, price: float, target: float, mc_dcf: np.ndarray,
     ax.text(target, len(ranges) - 0.35, f"Target ${target:,.0f} ", color=INK, fontsize=9,
             va="bottom", ha="right")
     hi_all = max(price, max(r[2] for r in ranges))
-    ax.set_xlim(0, hi_all * 1.12)
+    ax.set_xlim(0, hi_all * 1.15)
     ax.set_ylim(-0.6, len(ranges) - 0.1)
     ax.xaxis.set_major_formatter(lambda v, _: f"${v:,.0f}")
     ax.grid(axis="x", color=GRID, lw=0.6)

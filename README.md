@@ -10,19 +10,19 @@ Bommisetty Venkata Karthik, MBA (Finance) + MS Business Analytics, UIC
 
 ---
 
-## My call: SELL, $401 target
+## My call: SELL, $493 target
 
-Costco closed at $922.76 on September 25, 2026. My DCF puts it at about $401 a share. When I ran it 10,000 times with different growth, margin and discount rate assumptions, most of the values landed between $349 and $432.
+When I ran the model with live data on October 20, 2026, Costco was trading at $992.35. My DCF puts it at about $493 a share. When I ran it 10,000 times with different growth, margin and discount rate assumptions, most of the values landed between $419 and $537, and none of them came close to the current price.
 
-I want to be clear that I think Costco is a great company. It barely uses debt, members pay up front, suppliers basically fund its inventory, and it covers its interest payments about 80 times over. My issue is the price. At 44x earnings and 11x book value, investors are paying for years of perfect execution from a business that keeps only about 3 cents of every sales dollar as profit.
+I want to be clear that I think Costco is a great company. It barely uses debt, members pay up front, suppliers basically fund its inventory, and it covers its interest payments about 80 times over. My issue is the price. At 48x earnings and 12x book value, investors are paying for years of perfect execution from a business that keeps only about 3 cents of every sales dollar as profit.
 
 A few things convinced me:
 
-1. **The growth the price assumes isn't realistic.** I ran the DCF backwards to see what growth would justify $923 a share. Keeping margins where I have them, Costco would need revenue to grow around 33% a year for five years. It grew 10.1% in FY2026, and that was still helped by the 2024 membership fee increase. My base case assumes 8% fading to 6%.
-2. **The result held up when I stress-tested it.** None of the 10,000 simulations got close to the current price. The most optimistic corner of my sensitivity table (8% WACC, 4% long-term growth) still only gets to $558.
+1. **The growth the price assumes isn't realistic.** I ran the DCF backwards to see what growth would justify $992 a share. Keeping margins where I have them, Costco would need revenue to grow around 28% a year for five years. It grew 10.1% in FY2026, and that was still helped by the 2024 membership fee increase. My base case assumes 8% fading to 6%.
+2. **The result held up when I stress-tested it.** None of the 10,000 simulations got close to the current price. The most optimistic corner of my sensitivity table (6.8% WACC, 4% long-term growth) still only gets to $778. Peer multiples point the same way: at the median P/E of Walmart, Target and BJ's, Costco would be worth about $463.
 3. **A lot depends on membership fees.** Fees are under 2% of revenue but about half of operating income. If renewal rates slip from around 90%, earnings would take a much bigger hit than the revenue numbers suggest.
 
-One thing I had to think about: this is a valuation call, not a prediction that the stock drops next month. When I simulated where the stock could trade in a year based on its normal volatility, the odds of it actually hitting $401 were under 1%. Expensive stocks can stay expensive for a long time, especially ones people trust as much as Costco. My point is that the risk/reward at this price is bad, not that a crash is coming.
+One thing I had to think about: this is a valuation call, not a prediction that the stock drops next month. When I simulated where the stock could trade in a year based on its normal volatility, the odds of it actually hitting $493 were under 1%. Expensive stocks can stay expensive for a long time, especially ones people trust as much as Costco. My point is that the risk/reward at this price is bad, not that a crash is coming.
 
 ![Valuation ranges vs share price](charts/football_field.png)
 
@@ -68,7 +68,7 @@ All the inputs are in [`assumptions.json`](assumptions.json), so anyone can chan
 - **Starting point:** Costco's actual FY2026 numbers from their earnings release. Revenue of $303.2B, operating income of $11.7B, $20.2B in cash, $6.2B of debt and 443.3M shares.
 - **Revenue growth, 8% fading to 6%:** FY2026 was 10.1%, but part of that came from the fee increase rolling through renewals. I expect growth to slow as that wears off and the store base gets bigger.
 - **Operating margin, 3.9% rising to 4.1%:** It was 3.85% in FY2026. I allowed a small increase from membership fees and scale, but Costco keeps product margins thin on purpose, so I didn't want to assume much.
-- **Sales-to-capital, 8x:** This controls how much Costco has to reinvest to grow. Right now its revenue is about 14x its invested capital, partly because suppliers fund so much of its inventory. I used 8x to be conservative about new warehouse costs. At 14x the value only goes up to about $429, so this doesn't change the conclusion.
+- **Sales-to-capital, 8x:** This controls how much Costco has to reinvest to grow. Right now its revenue is about 14x its invested capital, partly because suppliers fund so much of its inventory. I used 8x to be conservative about new warehouse costs. At 14x the value only goes up to about $527, so this doesn't change the conclusion.
 - **Tax rate, 24%:** Close to Costco's recent effective rate.
 - **Discount rate:** Live Treasury yield, a 5% equity risk premium, and a beta from two years of weekly returns, adjusted toward 1 like most data providers do. My first version used one year of daily returns and got a beta of -0.17, which would mean Costco moves opposite to the market. That's not realistic, so the model now checks for it and falls back to Yahoo's published beta if the number looks off.
 - **Long-term growth, 3%:** Roughly in line with long-run nominal GDP.
@@ -82,7 +82,7 @@ All the inputs are in [`assumptions.json`](assumptions.json), so anyone can chan
 
 ## What I learned
 
-The biggest thing was learning to separate a great company from a good stock. Everything about Costco's balance sheet looks strong, but that doesn't make it a good buy at any price. I also learned how much a DCF depends on the terminal value. About 80% of my value comes from years after 2031, which made me a lot more careful about what I assume there.
+The biggest thing was learning to separate a great company from a good stock. Everything about Costco's balance sheet looks strong, but that doesn't make it a good buy at any price. I also learned how much a DCF depends on the terminal value. About 84% of my value comes from years after 2031, which made me a lot more careful about what I assume there.
 
 On the technical side, I liked having live data, the DCF, the simulations and a SQL log all in one script instead of spread across Excel tabs. It also made it easy to rerun everything when an assumption changed.
 
@@ -121,4 +121,4 @@ FROM runs ORDER BY run_id DESC;
 - Costco FY2026 earnings release (Sept 24, 2026), investor.costco.com
 - Yahoo Finance through the `yfinance` library
 
-*This is a student project, not investment advice. yfinance is an unofficial data source, so numbers can occasionally be delayed or missing. The figures above come from my September 25, 2026 run, and running the model again will update them.*
+*This is a student project, not investment advice. yfinance is an unofficial data source, so numbers can occasionally be delayed or missing. The figures above come from my October 20, 2026 live run, and running the model again will update them.*
