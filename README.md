@@ -9,6 +9,7 @@ This started as a homework assignment. Costco was my assigned company in a finan
 Bommisetty Venkata Karthik, MBA (Finance) + MS Business Analytics, UIC
 
 > **In short**
+>
 > - **SELL, $493 target**, with Costco at $992 on October 20, 2026.
 > - The price only works if Costco keeps growing about 10% a year for another 20-plus years. I think growth cools sooner.
 > - Even if everything goes right, a buyer at $992 earns about 6.6% a year, only 1.4 points more than a 10-year Treasury bond.
