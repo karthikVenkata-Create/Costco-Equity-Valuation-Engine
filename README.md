@@ -53,7 +53,7 @@ flowchart LR
     A[Yahoo Finance<br/>via yfinance] -->|prices, multiples,<br/>1 year of history, 10y yield| B[Peer comps<br/>WMT, TGT, BJ]
     A --> C[WACC<br/>CAPM + beta]
     F[assumptions.json] --> D
-    C --> D[5-year DCF<br/>+ terminal value]
+    C --> D[3-stage DCF<br/>10 years + terminal value]
     D --> R[Reverse DCF]
     D --> E[Monte Carlo<br/>10,000 runs]
     A -->|volatility| E
