@@ -8,6 +8,11 @@ This started as a homework assignment. Costco was my assigned company in a finan
 
 Bommisetty Venkata Karthik, MBA (Finance) + MS Business Analytics, UIC
 
+> **In short**
+> - **SELL, $493 target**, with Costco at $992 on October 20, 2026.
+> - The price only works if Costco keeps growing about 10% a year for another 20-plus years. I think growth cools sooner.
+> - Even if everything goes right, a buyer at $992 earns about 6.6% a year, only 1.4 points more than a 10-year Treasury bond.
+
 ---
 
 ## My call: SELL, $493 target
@@ -24,9 +29,11 @@ A few things convinced me:
 
 **Most analysts disagree with me.** As of October 21, 2026, 20 of the 27 analysts covering Costco rate it a Buy, with an average target around $1,094, and even the lowest target ($781) is well above mine ([TipRanks](https://www.tipranks.com/stocks/COST/forecast)). I think the gap comes down to the runway question above. The Street is paying for Costco to keep compounding near its historical pace for a long time, and I'm assuming that growth fades much sooner. I could be wrong on that, but it's a deliberate bet, not a modeling accident.
 
-**What a buyer actually gets at this price.** A lot of people own Costco for safety and consistency, not because they ran a DCF, and that's a real preference. Investors will accept a lower return for a stock that barely moves in a recession. So I turned the DCF around one more time and solved for the discount rate that makes the value equal $992. That's the yearly return a buyer gets at today's price if my forecast plays out. It comes to about 5.4%, and the 10-year Treasury was paying about 5.1% on the same day. So a Costco buyer is getting about 0.3 points of extra return for taking on stock risk instead of owning a government bond. Investors usually want several points more than that. Nobody buying Costco is being dumb, but the price of that safety has gotten very high. If Costco ever has a bad few years, there's no cushion.
+**Why I think growth slows.** Costco's roughly 10% growth comes from two places. About 3 points come from new warehouses: it opened 25 net new ones in FY2026 on a base of about 914, and plans about 28 more in FY2027. The rest comes from existing warehouses, where comparable sales grew 6.6% excluding gas and currency. The new-warehouse part can't really speed up. Costco opens about 25 to 30 a year, and as the base grows, the same number of openings adds a smaller percentage. With 647 of its 939 warehouses already in the U.S. and Puerto Rico, more of the new growth has to come from international markets, which take years to ramp up. So the price is really a bet that existing-warehouse sales keep growing 6 to 7% a year for two decades. Same-store growth for mature retailers usually drifts down toward inflation plus a little extra traffic, and that's the fade my base case assumes: 8% fading to 6% over five years, then 3%.
 
-**Even the bull case barely gets there.** To be fair to Costco, I stacked every bull lever I could defend at once: a 10-year forecast with growth fading from 9% to 8%, margins rising to 4.8% from ads, e-commerce, Kirkland and future fee increases, and a discount rate a full point lower (6.8%) for its safety and low beta. That gets the value to about $914, still about 8% below the price. Even if all of that happens, a buyer at $992 earns about 6.6% a year, only 1.4 points over Treasuries. In other words, today's price already pays for the best case. If things go right, you roughly break even on valuation. If they don't, my base case says the stock is worth about half. That lopsided risk is why I'm sticking with SELL and not HOLD, even though the bull case gets close.
+**Even if everything goes right, the return is thin.** A lot of people own Costco for safety and consistency, not because they ran a DCF, and that's a real preference. Investors will accept a lower return for a stock that barely moves in a recession. So I asked what return a buyer actually gets at $992, and I started from the most generous forecast I could defend instead of my own. I stacked every bull lever at once: a 10-year forecast with growth fading from 9% to 8%, margins rising to 4.8% from ads, e-commerce, Kirkland and future fee increases, and a discount rate a full point lower (6.8%) for Costco's safety and low beta. That gets the value to about $914, still about 8% below the price. Solving for the return a buyer earns at $992 in that case gives about 6.6% a year, only 1.4 points more than the 10-year Treasury, which was paying about 5.1% that day. Investors usually want several points more than that for owning a stock. Under my own base case it's worse: about 5.4%, just 0.3 points over Treasuries. I lead with the bull-case number because it already gives Costco the benefit of the doubt, so nobody can say it's low just because my forecast is pessimistic.
+
+Nobody buying Costco is being dumb, but the price of that safety has gotten very high. Today's price already pays for the best case. If things go right, you roughly break even on valuation. If they don't, my base case says the stock is worth about half. That lopsided risk is why I'm sticking with SELL and not HOLD, even though the bull case gets close.
 
 **This has happened before.** In 1999 Walmart was a great business trading at about 39 times earnings. Over the next decade its earnings per share grew about 10% a year, but the P/E fell to around 16, and someone who bought in 1999 was still underwater in 2008 ([The Rational Walk](https://rationalwalk.com/wal-marts-ten-year-record-a-case-study-of-the-dangers-of-overpaying-for-growth/)). Costco doesn't have to crash for SELL to be right. The business can keep doing well while the stock goes nowhere because it started too expensive.
 
@@ -76,7 +83,7 @@ Each run does roughly this:
 All the inputs are in [`assumptions.json`](assumptions.json), so anyone can change a number and rerun it.
 
 - **Starting point:** Costco's actual FY2026 numbers from their earnings release. Revenue of $303.2B, operating income of $11.7B, $20.2B in cash, $6.2B of debt and 443.3M shares.
-- **Revenue growth, 8% fading to 6%:** FY2026 was 10.1%, but part of that came from the fee increase rolling through renewals. I expect growth to slow as that wears off and the store base gets bigger.
+- **Revenue growth, 8% fading to 6%:** FY2026 was 10.1%, about 3 points from new warehouses and the rest from existing ones. I expect existing-warehouse growth to cool toward inflation plus a little traffic, while new openings stay around 3% of the base (see "Why I think growth slows" above).
 - **Operating margin, 3.9% rising to 4.1%:** It was 3.85% in FY2026. I allowed a small increase from membership fees and scale, but Costco keeps product margins thin on purpose, so I didn't want to assume much.
 - **Sales-to-capital, 8x:** This controls how much Costco has to reinvest to grow. Right now its revenue is about 14x its invested capital, partly because suppliers fund so much of its inventory. I used 8x to be conservative about new warehouse costs. At 14x the value only goes up to about $527, so this doesn't change the conclusion.
 - **Tax rate, 24%:** Close to Costco's recent effective rate.
@@ -89,7 +96,7 @@ All the inputs are in [`assumptions.json`](assumptions.json), so anyone can chan
 ## What could prove me wrong
 
 - **Margins could grow a lot more than I expect.** If membership income, advertising and e-commerce push operating margins toward 5 or 6%, the value goes up a lot.
-- **The market might just keep paying up for quality.** Costco has looked expensive on a DCF for years and still beaten the market. If investors are happy earning about 5.4% a year from a business this stable, the price can stay where it is, and my discount rate is too high for how people actually value Costco.
+- **The market might just keep paying up for quality.** Costco has looked expensive on a DCF for years and still beaten the market. But for most of the 2010s the 10-year Treasury paid around 2 to 3%, and in 2020-21 it was under 2% ([multpl](https://www.multpl.com/10-year-treasury-rate/table/by-year)). Back then, even a 5 or 6% expected return on Costco was a big premium over bonds. With Treasuries around 5.1% now, that premium is mostly gone, so the conditions that made "expensive" Costco work in the past aren't here anymore. The real risk to my call is rates falling back to those levels.
 - **Costco's runway could be longer than I think.** This is the big one. The price works if Costco keeps growing about 10% a year for around 21 more years. It has done close to that for the last two decades, and new warehouses in Asia and Europe could keep it going.
 
 ## What I learned
@@ -133,6 +140,8 @@ FROM runs ORDER BY run_id DESC;
 - Costco FY2026 earnings release (Sept 24, 2026), investor.costco.com
 - Costco FY2004 results (total revenue $48.1B), [SEC filing](https://www.sec.gov/Archives/edgar/data/0000909832/000119312504167911/dex991.htm), used for the long-run growth rate
 - Analyst ratings and targets from [TipRanks](https://www.tipranks.com/stocks/COST/forecast), October 21, 2026
+- Costco FY2026 comparable sales and warehouse counts from the [FY2026 results (SEC filing)](https://www.sec.gov/Archives/edgar/data/0000909832/000090983226000084/costex9918-k92426.htm), and FY2026 openings and FY2027 plans from [MarketBeat](https://www.marketbeat.com/articles/costco-ends-its-fiscal-year-on-a-high-note-eyes-big-expansion/)
+- 10-year Treasury yields by year from [multpl](https://www.multpl.com/10-year-treasury-rate/table/by-year)
 - Walmart's 1999-2008 record from [The Rational Walk](https://rationalwalk.com/wal-marts-ten-year-record-a-case-study-of-the-dangers-of-overpaying-for-growth/)
 - Yahoo Finance through the `yfinance` library
 

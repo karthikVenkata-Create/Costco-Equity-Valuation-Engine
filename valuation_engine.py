@@ -685,9 +685,14 @@ def main(argv: list[str] | None = None) -> dict:
     print(f"\n  To justify the price, Costco needs about {runway_txt} years of {rw_g:.0%} growth, or"
           f"\n  {pct(g_term)} growth forever after 2031. {share_below:.0%} of {n:,} simulated DCFs"
           f"\n  land below today's price.")
-    print(f"  At this price a buyer can expect about {pct(exp_ret)} a year, only "
-          f"{(exp_ret - md.risk_free_rate) * 100:.1f} points more\n  than a 10-year Treasury."
-          + (f" Even the stacked bull case is worth {usd(bull_val, 0)}." if not _bad(bull_val) else ""))
+    if not _bad(bull_ret):
+        print(f"  Even if everything goes right (bull case, worth {usd(bull_val, 0)}), a buyer at this price"
+              f"\n  earns about {pct(bull_ret)} a year, only {(bull_ret - md.risk_free_rate) * 100:.1f} points more"
+              f" than a 10-year Treasury.\n  Under the base case it's {pct(exp_ret)}"
+              f" ({(exp_ret - md.risk_free_rate) * 100:.1f} points more).")
+    else:
+        print(f"  At this price a buyer can expect about {pct(exp_ret)} a year, only "
+              f"{(exp_ret - md.risk_free_rate) * 100:.1f} points more\n  than a 10-year Treasury.")
     odds = "under 1%" if prob_hit < 0.01 else f"about {prob_hit:.0%}"
     print(f"  But a valuation gap is not a timing call: at its normal volatility the stock has\n"
           f"  {odds} odds of trading at the target within a year.")
