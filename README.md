@@ -4,7 +4,7 @@
 
 This started as a homework assignment. Costco was my assigned company in a finance class, and after writing a report on its capital structure I wanted to go further and actually value the stock. I built the model in Python so it pulls current market data every time it runs instead of sitting in a spreadsheet with numbers from one day.
 
-You can run it in your browser with the Colab button above, no install needed.
+**[Try the model on my website](https://karthikvenkata-create.github.io/costco.html)**: change the growth, margins or discount rate and watch the value, reverse DCF and simulations update. You can also run the full Python version in your browser with the Colab button above, no install needed.
 
 Bommisetty Venkata Karthik, MBA (Finance) + MS Business Analytics, UIC
 
