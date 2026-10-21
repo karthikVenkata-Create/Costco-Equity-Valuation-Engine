@@ -33,16 +33,16 @@
   },
 
   "dcf_base_case": {
-    "_note": "5-year FCFF projection. Reinvestment = change in revenue / sales_to_capital.",
-    "projection_years": 5,
-    "revenue_growth": [0.080, 0.075, 0.070, 0.065, 0.060],
-    "ebit_margin":    [0.0390, 0.0395, 0.0400, 0.0405, 0.0410],
+    "_note": "Three-stage FCFF model. Years 1-5: growth fades 8% to 6% as the fee increase laps. Years 6-10: growth fades from 6% to the 3% long-term rate as new openings shrink relative to a bigger base. After year 10: Gordon-growth terminal value at 3%. Margins rise to 4.1% by year 5 and hold. Reinvestment = change in revenue / sales_to_capital.",
+    "projection_years": 10,
+    "revenue_growth": [0.080, 0.075, 0.070, 0.065, 0.060, 0.054, 0.048, 0.042, 0.036, 0.030],
+    "ebit_margin":    [0.0390, 0.0395, 0.0400, 0.0405, 0.0410, 0.0410, 0.0410, 0.0410, 0.0410, 0.0410],
     "sales_to_capital": 8.0,
     "terminal_growth": 0.030
   },
 
   "scenarios": {
-    "_note": "Monte Carlo draws each input independently from a triangular distribution (bear, base, bull). Why these ranges: growth -4%/+4% around the base path means 3% to 11% a year on average, and the top end is FY2026's 10.1% held for five years. Margin -0.5%/+1.0% runs from about 3.4% (below FY2026's 3.85%) to about 5.1% by 2031, which covers the 'margins reach 5%' bull case. WACC +/-1.5% is wider than the sensitivity table. Terminal growth 2% to 4% brackets long-run nominal GDP.",
+    "_note": "Monte Carlo draws each input independently from a triangular distribution (bear, base, bull). Why these ranges: the whole 10-year growth path shifts by up to 4 points either way, so year-1 growth runs from 4% to 12% (FY2026 was 10.1%). Margin -0.5%/+1.0% runs from about 3.6% (below FY2026's 3.85%) to about 5.1%, which covers the 'margins reach 5%' bull case. WACC +/-1.5% is wider than the sensitivity table. Terminal growth 2% to 4% brackets long-run nominal GDP.",
     "growth_shift":      {"bear": -0.040, "base": 0.0,   "bull": 0.040},
     "ebit_margin_shift": {"bear": -0.005, "base": 0.0,   "bull": 0.010},
     "wacc_shift":        {"bear": 0.015,  "base": 0.0,   "bull": -0.015},
@@ -55,12 +55,13 @@
   },
 
   "bull_case": {
-    "_note": "Every bull lever stacked at once, to test whether the price is justified even if things go right: a 10-year forecast with growth fading from 9% to 8%, margins rising to 4.8% (ads, e-commerce, Kirkland, fee hikes), and a discount rate 1 point below the live WACC for Costco's safety and low beta.",
+    "_note": "Every bull lever stacked at once, to test whether the price is justified even if things go right: 10 years of growth fading from 9% to 8%, margins rising to 4.8% (ads, e-commerce, Kirkland, fee hikes), then the same kind of 5-year fade down to the 3% long-term rate the base case uses, and a discount rate 1 point below the live WACC for Costco's safety and low beta.",
     "projection_years": 10,
     "growth_start": 0.09,
     "growth_end": 0.08,
     "margin_start": 0.039,
     "margin_end": 0.048,
+    "fade_years": 5,
     "wacc_shift": -0.01
   },
 

@@ -13,9 +13,10 @@ Pipeline
   3. WACC          CAPM cost of equity from the live 10y Treasury yield and a beta
                    from 2 years of weekly returns vs the S&P 500 (adjusted toward 1,
                    with a sanity check)
-  4. DCF           5-year FCFF projection + Gordon-growth terminal value,
+  4. DCF           three-stage FCFF model: years 1-5, a fade to long-term growth in
+                   years 6-10, then a Gordon-growth terminal value; plus a
                    WACC x terminal-growth sensitivity grid
-  5. REVERSE DCF   what the price is assuming, five ways: 5-year growth, perpetual
+  5. REVERSE DCF   what the price is assuming, five ways: forecast growth, perpetual
                    growth, years of high growth, margin, and the yearly return a
                    buyer gets at today's price (vs the 10-year Treasury)
                    + a stacked bull case with every upside lever at once
@@ -252,10 +253,12 @@ def dcf_per_share(cfg: dict, wacc, growth_shift=0.0, margin_shift=0.0,
     wacc = np.asarray(wacc, dtype=float)
     g = np.asarray(b["terminal_growth"] if terminal_g is None else terminal_g, dtype=float)
 
+    n_years = len(b["revenue_growth"])                  # the growth list sets the horizon
+    margins = (list(b["ebit_margin"]) + [b["ebit_margin"][-1]] * n_years)[:n_years]
     rev_prev, pv_fcff, rows = f["revenue"], 0.0, []
-    for t in range(b["projection_years"]):
+    for t in range(n_years):
         rev = rev_prev * (1 + b["revenue_growth"][t] + growth_shift)
-        ebit = rev * (b["ebit_margin"][t] + margin_shift)
+        ebit = rev * (margins[t] + margin_shift)
         nopat = ebit * (1 - tax)
         reinvest = (rev - rev_prev) / b["sales_to_capital"]
         fcff = nopat - reinvest
@@ -266,10 +269,10 @@ def dcf_per_share(cfg: dict, wacc, growth_shift=0.0, margin_shift=0.0,
 
     # Terminal year reinvests only what it needs to grow at g
     rev_tv = rev_prev * (1 + g)
-    fcff_tv = (rev_tv * (b["ebit_margin"][-1] + margin_shift) * (1 - tax)
+    fcff_tv = (rev_tv * (margins[-1] + margin_shift) * (1 - tax)
                - (rev_tv - rev_prev) / b["sales_to_capital"])
     tv = fcff_tv / np.maximum(wacc - g, 0.005)        # guard against wacc <= g
-    pv_tv = tv / (1 + wacc) ** b["projection_years"]
+    pv_tv = tv / (1 + wacc) ** n_years
 
     ev = pv_fcff + pv_tv
     equity = ev + f["cash"] - f["total_debt"]
@@ -302,7 +305,7 @@ def _solve(f, lo: float, hi: float) -> float:
 
 
 def implied_growth(cfg: dict, wacc: float, price: float) -> float:
-    """Reverse DCF, version 1: extra growth needed if ONLY the next 5 years change.
+    """Reverse DCF, version 1: extra growth needed in every forecast year, nothing else changed.
 
     This overstates the requirement for a long-runway business, because
     terminal growth stays at its base value. Versions 2-4 relax that.
@@ -311,7 +314,7 @@ def implied_growth(cfg: dict, wacc: float, price: float) -> float:
 
 
 def implied_terminal_growth(cfg: dict, wacc: float, price: float) -> float:
-    """Reverse DCF, version 2: perpetual growth after 2031 that justifies the price."""
+    """Reverse DCF, version 2: perpetual growth after the forecast that justifies the price."""
     return _solve(lambda g: float(dcf_per_share(cfg, wacc, terminal_g=g)) - price,
                   0.0, wacc - 0.0051)
 
@@ -337,7 +340,7 @@ def implied_runway_years(cfg: dict, wacc: float, price: float, growth: float,
 
 
 def implied_margin(cfg: dict, wacc: float, price: float) -> float:
-    """Reverse DCF, version 4: 2031 operating margin needed with base-case growth."""
+    """Reverse DCF, version 4: final-year operating margin needed with base-case growth."""
     shift = _solve(lambda x: float(dcf_per_share(cfg, wacc, margin_shift=x)) - price, -0.03, 0.15)
     return cfg["dcf_base_case"]["ebit_margin"][-1] + shift
 
@@ -360,9 +363,12 @@ def bull_cfg(cfg: dict) -> dict:
     c = json.loads(json.dumps(cfg))
     bc, b = cfg["bull_case"], c["dcf_base_case"]
     n = bc["projection_years"]
-    b["projection_years"] = n
-    b["revenue_growth"] = _line_fade(bc["growth_start"], bc["growth_end"], n)
-    b["ebit_margin"] = _line_fade(bc["margin_start"], bc["margin_end"], n)
+    k = bc.get("fade_years", 0)
+    g_end, tg = bc["growth_end"], b["terminal_growth"]
+    fade = [g_end - (g_end - tg) * (i + 1) / k for i in range(k)]   # glide down to terminal growth
+    b["revenue_growth"] = _line_fade(bc["growth_start"], g_end, n) + fade
+    b["ebit_margin"] = _line_fade(bc["margin_start"], bc["margin_end"], n) + [bc["margin_end"]] * k
+    b["projection_years"] = n + k
     return c
 
 
@@ -460,8 +466,8 @@ def save_charts(out: Path, price: float, target: float, mc_dcf: np.ndarray,
     ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
-    share_below = (mc_dcf < price).mean()
-    ax.set_title(f"{len(mc_dcf):,} DCF simulations: {share_below:.0%} value COST below its "
+    n_below = int((mc_dcf < price).sum())
+    ax.set_title(f"{len(mc_dcf):,} DCF simulations: {n_below:,} value COST below its "
                  f"${price:,.0f} price", loc="left", fontsize=11)
     fig.tight_layout()
     paths.append(out / "monte_carlo_dcf.png")
@@ -481,7 +487,7 @@ CREATE TABLE IF NOT EXISTS runs (
     risk_free_rate REAL, beta REAL, wacc REAL, terminal_growth REAL,
     dcf_value REAL, target_price REAL, rating TEXT, upside REAL,
     implied_5y_growth REAL, implied_terminal_growth REAL, implied_runway_years INTEGER,
-    implied_2031_margin REAL, implied_return REAL, bull_case_value REAL,
+    implied_final_margin REAL, implied_return REAL, bull_case_value REAL,
     implied_return_bull REAL, comps_pe_value REAL, comps_ev_ebitda_value REAL,
     mc_dcf_p10 REAL, mc_dcf_p50 REAL, mc_dcf_p90 REAL, mc_share_below_price REAL,
     volatility REAL, prob_price_below_target_1y REAL
@@ -597,7 +603,7 @@ def main(argv: list[str] | None = None) -> dict:
     with pd.option_context("display.float_format", "{:,.0f}".format, "display.width", WIDTH):
         print(d["table"].to_string())
     print()
-    line("PV of 5-year free cash flow", usd(d["pv_fcff"], 0))
+    line(f"PV of {len(d['table'])}-year free cash flow", usd(d["pv_fcff"], 0))
     line("PV of terminal value", usd(d["pv_tv"], 0))
     line("Terminal value share of enterprise value", pct(d["tv_share"], 0))
     line("Equity value (EV + cash - debt)", usd(d["equity_value"], 0))
@@ -609,20 +615,22 @@ def main(argv: list[str] | None = None) -> dict:
 
     # 5. Reverse DCF -----------------------------------------------------------
     b = cfg["dcf_base_case"]
-    base_avg = float(np.mean(b["revenue_growth"]))
+    gl = b["revenue_growth"]
+    end_year = 2026 + len(gl)
+    base_avg = float(np.mean(gl))
     g5 = base_avg + implied_growth(cfg, w.wacc, price)
     g_term = implied_terminal_growth(cfg, w.wacc, price)
     rw_g = cfg.get("reverse_dcf", {}).get("runway_growth", 0.10)
     rw_years = implied_runway_years(cfg, w.wacc, price, rw_g)
     m_need = implied_margin(cfg, w.wacc, price)
     banner("4. WHAT IS THE PRICE ASSUMING?  (reverse DCF, five ways)")
-    print(f"  Base case: {base_avg:.0%} average growth for 5 years, {b['terminal_growth']:.0%} after,"
-          f" {b['ebit_margin'][-1]:.1%} margin")
-    line("1. Growth for 5 yrs, nothing else changed", pct(g5))
-    line("2. Growth forever after 2031", "above WACC" if _bad(g_term) else pct(g_term))
+    print(f"  Base case: growth {gl[0]:.0%} -> {gl[min(4, len(gl) - 1)]:.0%} (years 1-5), down to {gl[-1]:.0%}"
+          f" by year {len(gl)}, {b['terminal_growth']:.0%} after; margin {b['ebit_margin'][-1]:.1%}")
+    line(f"1. Average growth, every year {2027}-{end_year}", pct(g5))
+    line(f"2. Growth forever after {end_year}", "above WACC" if _bad(g_term) else pct(g_term))
     line(f"3. Years of {rw_g:.0%} growth before slowing",
          f"over 60" if rw_years is None else f"{rw_years}")
-    line("4. 2031 operating margin, base-case growth", pct(m_need))
+    line(f"4. {end_year} operating margin, base-case growth", pct(m_need))
     print("  For reference: FY2026 net sales grew 10.1%; revenue has compounded ~8.7%")
     print("  a year since FY2004; FY2026 operating margin was 3.85%.")
 
@@ -641,7 +649,8 @@ def main(argv: list[str] | None = None) -> dict:
         bull_ret = implied_return(bull, price)
         banner("4b. STACKED BULL CASE  (every upside lever at once)")
         print(f"  {bc['projection_years']} years of growth fading {bc['growth_start']:.0%} -> {bc['growth_end']:.0%},"
-              f" margins rising to {bc['margin_end']:.1%}, WACC {pct(bull_wacc, 2)}")
+              f" then {bc.get('fade_years', 0)} years down to {b['terminal_growth']:.0%};"
+              f"\n  margins rising to {bc['margin_end']:.1%}, WACC {pct(bull_wacc, 2)}")
         line("Bull-case value per share", usd(bull_val))
         line("vs share price", pct(bull_val / price - 1))
         line("Yearly return at this price if the bull case happens", pct(bull_ret, 2))
@@ -683,7 +692,7 @@ def main(argv: list[str] | None = None) -> dict:
     line("Upside / (downside)", pct(upside))
     runway_txt = "over 60" if rw_years is None else str(rw_years)
     print(f"\n  To justify the price, Costco needs about {runway_txt} years of {rw_g:.0%} growth, or"
-          f"\n  {pct(g_term)} growth forever after 2031. {share_below:.0%} of {n:,} simulated DCFs"
+          f"\n  {pct(g_term)} growth forever after {end_year}. {share_below:.1%} of {n:,} simulated DCFs"
           f"\n  land below today's price.")
     if not _bad(bull_ret):
         print(f"  Even if everything goes right (bull case, worth {usd(bull_val, 0)}), a buyer at this price"
@@ -705,7 +714,7 @@ def main(argv: list[str] | None = None) -> dict:
         "terminal_growth": cfg["dcf_base_case"]["terminal_growth"], "dcf_value": dcf_val,
         "target_price": target, "rating": rating, "upside": upside,
         "implied_5y_growth": g5, "implied_terminal_growth": g_term,
-        "implied_runway_years": rw_years, "implied_2031_margin": m_need,
+        "implied_runway_years": rw_years, "implied_final_margin": m_need,
         "implied_return": exp_ret, "bull_case_value": bull_val, "implied_return_bull": bull_ret,
         "comps_pe_value": implied.get("Peer P/E"), "comps_ev_ebitda_value": implied.get("Peer EV/EBITDA"),
         "mc_dcf_p10": s_dcf["bear_p10"], "mc_dcf_p50": s_dcf["base_p50"], "mc_dcf_p90": s_dcf["bull_p90"],
