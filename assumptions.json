@@ -42,11 +42,16 @@
   },
 
   "scenarios": {
-    "_note": "Monte Carlo draws each input from a triangular distribution (bear, base, bull), labelled by price outcome.",
-    "growth_shift":      {"bear": -0.025, "base": 0.0,   "bull": 0.020},
-    "ebit_margin_shift": {"bear": -0.004, "base": 0.0,   "bull": 0.004},
-    "wacc_shift":        {"bear": 0.010,  "base": 0.0,   "bull": -0.0075},
-    "terminal_growth":   {"bear": 0.020,  "base": 0.030, "bull": 0.035}
+    "_note": "Monte Carlo draws each input independently from a triangular distribution (bear, base, bull). Why these ranges: growth -4%/+4% around the base path means 3% to 11% a year on average, and the top end is FY2026's 10.1% held for five years. Margin -0.5%/+1.0% runs from about 3.4% (below FY2026's 3.85%) to about 5.1% by 2031, which covers the 'margins reach 5%' bull case. WACC +/-1.5% is wider than the sensitivity table. Terminal growth 2% to 4% brackets long-run nominal GDP.",
+    "growth_shift":      {"bear": -0.040, "base": 0.0,   "bull": 0.040},
+    "ebit_margin_shift": {"bear": -0.005, "base": 0.0,   "bull": 0.010},
+    "wacc_shift":        {"bear": 0.015,  "base": 0.0,   "bull": -0.015},
+    "terminal_growth":   {"bear": 0.020,  "base": 0.030, "bull": 0.040}
+  },
+
+  "reverse_dcf": {
+    "_note": "Growth rate used for the 'how many years of high growth' version of the reverse DCF. 10% is roughly FY2026's pace.",
+    "runway_growth": 0.10
   },
 
   "rating_rule": {

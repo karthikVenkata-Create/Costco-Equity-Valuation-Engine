@@ -15,7 +15,8 @@ Pipeline
                    with a sanity check)
   4. DCF           5-year FCFF projection + Gordon-growth terminal value,
                    WACC x terminal-growth sensitivity grid
-  5. REVERSE DCF   the revenue growth the current share price is silently assuming
+  5. REVERSE DCF   what the price is assuming, four ways: 5-year growth, perpetual
+                   growth, years of high growth, and margin
   6. MONTE CARLO   (a) 10,000 DCF runs with growth / margin / WACC / terminal g drawn
                        from Bear-Base-Bull ranges -> range of intrinsic value
                    (b) 10,000 one-year price paths at COST's realized volatility
@@ -288,16 +289,55 @@ def sensitivity_grid(cfg: dict, wacc_mid: float) -> pd.DataFrame:
         index=[f"WACC {w:.2%}" for w in waccs])
 
 
-def implied_growth(cfg: dict, wacc: float, price: float) -> float:
-    """Reverse DCF: the growth shift that makes intrinsic value equal the price."""
-    lo, hi = -0.10, 0.40
+def _solve(f, lo: float, hi: float) -> float:
+    """Bisection for an increasing function f: returns x where f(x) crosses 0."""
+    if f(hi) < 0:
+        return float("nan")            # not reachable inside the range
     for _ in range(80):
         mid = (lo + hi) / 2
-        if dcf_per_share(cfg, wacc, growth_shift=mid) < price:
-            lo = mid
-        else:
-            hi = mid
+        lo, hi = (mid, hi) if f(mid) < 0 else (lo, mid)
     return (lo + hi) / 2
+
+
+def implied_growth(cfg: dict, wacc: float, price: float) -> float:
+    """Reverse DCF, version 1: extra growth needed if ONLY the next 5 years change.
+
+    This overstates the requirement for a long-runway business, because
+    terminal growth stays at its base value. Versions 2-4 relax that.
+    """
+    return _solve(lambda x: float(dcf_per_share(cfg, wacc, growth_shift=x)) - price, -0.10, 0.60)
+
+
+def implied_terminal_growth(cfg: dict, wacc: float, price: float) -> float:
+    """Reverse DCF, version 2: perpetual growth after 2031 that justifies the price."""
+    return _solve(lambda g: float(dcf_per_share(cfg, wacc, terminal_g=g)) - price,
+                  0.0, wacc - 0.0051)
+
+
+def runway_cfg(cfg: dict, years: int, growth: float) -> dict:
+    """Copy of cfg with `years` of flat `growth`, margins held at the final base-case level."""
+    c = json.loads(json.dumps(cfg))
+    b = c["dcf_base_case"]
+    m = b["ebit_margin"]
+    b["projection_years"] = years
+    b["revenue_growth"] = [growth] * years
+    b["ebit_margin"] = (m + [m[-1]] * years)[:years]
+    return c
+
+
+def implied_runway_years(cfg: dict, wacc: float, price: float, growth: float,
+                         max_years: int = 60) -> int | None:
+    """Reverse DCF, version 3: years of `growth` before fading to terminal growth."""
+    for n in range(1, max_years + 1):
+        if float(dcf_per_share(runway_cfg(cfg, n, growth), wacc)) >= price:
+            return n
+    return None
+
+
+def implied_margin(cfg: dict, wacc: float, price: float) -> float:
+    """Reverse DCF, version 4: 2031 operating margin needed with base-case growth."""
+    shift = _solve(lambda x: float(dcf_per_share(cfg, wacc, margin_shift=x)) - price, -0.03, 0.15)
+    return cfg["dcf_base_case"]["ebit_margin"][-1] + shift
 
 
 # ----------------------------------------------------------------------------
@@ -414,7 +454,8 @@ CREATE TABLE IF NOT EXISTS runs (
     run_timestamp_utc TEXT, data_as_of TEXT, mode TEXT, price REAL,
     risk_free_rate REAL, beta REAL, wacc REAL, terminal_growth REAL,
     dcf_value REAL, target_price REAL, rating TEXT, upside REAL,
-    implied_5y_growth REAL, comps_pe_value REAL, comps_ev_ebitda_value REAL,
+    implied_5y_growth REAL, implied_terminal_growth REAL, implied_runway_years INTEGER,
+    implied_2031_margin REAL, comps_pe_value REAL, comps_ev_ebitda_value REAL,
     mc_dcf_p10 REAL, mc_dcf_p50 REAL, mc_dcf_p90 REAL, mc_share_below_price REAL,
     volatility REAL, prob_price_below_target_1y REAL
 );
@@ -437,6 +478,10 @@ def save_run(db: Path, run: dict, comps: pd.DataFrame | None, proj: pd.DataFrame
              mc: dict[str, dict], n: int) -> int:
     con = sqlite3.connect(db)
     con.executescript(SCHEMA)
+    have = {r[1] for r in con.execute("PRAGMA table_info(runs)")}
+    for col in run:                    # older databases: add any new columns
+        if col not in have:
+            con.execute(f"ALTER TABLE runs ADD COLUMN {col}")
     cur = con.execute(f"INSERT INTO runs ({', '.join(run)}) VALUES ({', '.join('?' * len(run))})",
                       list(run.values()))
     rid = cur.lastrowid
@@ -536,12 +581,23 @@ def main(argv: list[str] | None = None) -> dict:
         print(grid.to_string())
 
     # 5. Reverse DCF -----------------------------------------------------------
-    shift = implied_growth(cfg, w.wacc, price)
-    base_avg = float(np.mean(cfg["dcf_base_case"]["revenue_growth"]))
-    banner("4. WHAT IS THE PRICE ASSUMING?  (reverse DCF)")
-    line("Base-case average revenue growth, FY27-31", pct(base_avg))
-    line("Growth needed to justify price (margins held)", pct(base_avg + shift))
-    line("FY2026 actual net sales growth (incl. fee hike)", "10.1%")
+    b = cfg["dcf_base_case"]
+    base_avg = float(np.mean(b["revenue_growth"]))
+    g5 = base_avg + implied_growth(cfg, w.wacc, price)
+    g_term = implied_terminal_growth(cfg, w.wacc, price)
+    rw_g = cfg.get("reverse_dcf", {}).get("runway_growth", 0.10)
+    rw_years = implied_runway_years(cfg, w.wacc, price, rw_g)
+    m_need = implied_margin(cfg, w.wacc, price)
+    banner("4. WHAT IS THE PRICE ASSUMING?  (reverse DCF, four ways)")
+    print(f"  Base case: {base_avg:.0%} average growth for 5 years, {b['terminal_growth']:.0%} after,"
+          f" {b['ebit_margin'][-1]:.1%} margin")
+    line("1. Growth for 5 yrs, nothing else changed", pct(g5))
+    line("2. Growth forever after 2031", "above WACC" if _bad(g_term) else pct(g_term))
+    line(f"3. Years of {rw_g:.0%} growth before slowing",
+         f"over 60" if rw_years is None else f"{rw_years}")
+    line("4. 2031 operating margin, base-case growth", pct(m_need))
+    print("  For reference: FY2026 net sales grew 10.1%; revenue has compounded ~8.7%")
+    print("  a year since FY2004; FY2026 operating margin was 3.85%.")
 
     # 6. Monte Carlo ------------------------------------------------------------
     mc_dcf = monte_carlo_dcf(cfg, w.wacc, n, rng)
@@ -575,9 +631,10 @@ def main(argv: list[str] | None = None) -> dict:
     line("Rating", rating)
     line("Target price (base-case DCF)", usd(target, 0))
     line("Upside / (downside)", pct(upside))
-    print(f"\n  The price needs ~{base_avg + shift:.0%} a year of revenue growth for five years; "
-          f"the base case\n  assumes {base_avg:.0%}. {share_below:.0%} of 10,000 simulated DCFs land "
-          f"below today's price.")
+    runway_txt = "over 60" if rw_years is None else str(rw_years)
+    print(f"\n  To justify the price, Costco needs about {runway_txt} years of {rw_g:.0%} growth, or"
+          f"\n  {pct(g_term)} growth forever after 2031. {share_below:.0%} of {n:,} simulated DCFs"
+          f"\n  land below today's price.")
     odds = "under 1%" if prob_hit < 0.01 else f"about {prob_hit:.0%}"
     print(f"  But a valuation gap is not a timing call: at its normal volatility the stock has\n"
           f"  {odds} odds of trading at the target within a year.")
@@ -589,7 +646,8 @@ def main(argv: list[str] | None = None) -> dict:
         "risk_free_rate": md.risk_free_rate, "beta": md.beta, "wacc": w.wacc,
         "terminal_growth": cfg["dcf_base_case"]["terminal_growth"], "dcf_value": dcf_val,
         "target_price": target, "rating": rating, "upside": upside,
-        "implied_5y_growth": base_avg + shift,
+        "implied_5y_growth": g5, "implied_terminal_growth": g_term,
+        "implied_runway_years": rw_years, "implied_2031_margin": m_need,
         "comps_pe_value": implied.get("Peer P/E"), "comps_ev_ebitda_value": implied.get("Peer EV/EBITDA"),
         "mc_dcf_p10": s_dcf["bear_p10"], "mc_dcf_p50": s_dcf["base_p50"], "mc_dcf_p90": s_dcf["bull_p90"],
         "mc_share_below_price": share_below, "volatility": md.volatility,
