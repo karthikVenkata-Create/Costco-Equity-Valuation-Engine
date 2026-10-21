@@ -54,6 +54,16 @@
     "runway_growth": 0.10
   },
 
+  "bull_case": {
+    "_note": "Every bull lever stacked at once, to test whether the price is justified even if things go right: a 10-year forecast with growth fading from 9% to 8%, margins rising to 4.8% (ads, e-commerce, Kirkland, fee hikes), and a discount rate 1 point below the live WACC for Costco's safety and low beta.",
+    "projection_years": 10,
+    "growth_start": 0.09,
+    "growth_end": 0.08,
+    "margin_start": 0.039,
+    "margin_end": 0.048,
+    "wacc_shift": -0.01
+  },
+
   "rating_rule": {
     "_note": "Rating from target vs price: BUY above +10%, SELL below -10%, otherwise HOLD.",
     "buy_above": 0.10,

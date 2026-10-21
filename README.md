@@ -24,6 +24,12 @@ A few things convinced me:
 
 **Most analysts disagree with me.** As of October 21, 2026, 20 of the 27 analysts covering Costco rate it a Buy, with an average target around $1,094, and even the lowest target ($781) is well above mine ([TipRanks](https://www.tipranks.com/stocks/COST/forecast)). I think the gap comes down to the runway question above. The Street is paying for Costco to keep compounding near its historical pace for a long time, and I'm assuming that growth fades much sooner. I could be wrong on that, but it's a deliberate bet, not a modeling accident.
 
+**What a buyer actually gets at this price.** A lot of people own Costco for safety and consistency, not because they ran a DCF, and that's a real preference. Investors will accept a lower return for a stock that barely moves in a recession. So I turned the DCF around one more time and solved for the discount rate that makes the value equal $992. That's the yearly return a buyer gets at today's price if my forecast plays out. It comes to about 5.4%, and the 10-year Treasury was paying about 5.1% on the same day. So a Costco buyer is getting about 0.3 points of extra return for taking on stock risk instead of owning a government bond. Investors usually want several points more than that. Nobody buying Costco is being dumb, but the price of that safety has gotten very high. If Costco ever has a bad few years, there's no cushion.
+
+**Even the bull case barely gets there.** To be fair to Costco, I stacked every bull lever I could defend at once: a 10-year forecast with growth fading from 9% to 8%, margins rising to 4.8% from ads, e-commerce, Kirkland and future fee increases, and a discount rate a full point lower (6.8%) for its safety and low beta. That gets the value to about $914, still about 8% below the price. Even if all of that happens, a buyer at $992 earns about 6.6% a year, only 1.4 points over Treasuries. In other words, today's price already pays for the best case. If things go right, you roughly break even on valuation. If they don't, my base case says the stock is worth about half. That lopsided risk is why I'm sticking with SELL and not HOLD, even though the bull case gets close.
+
+**This has happened before.** In 1999 Walmart was a great business trading at about 39 times earnings. Over the next decade its earnings per share grew about 10% a year, but the P/E fell to around 16, and someone who bought in 1999 was still underwater in 2008 ([The Rational Walk](https://rationalwalk.com/wal-marts-ten-year-record-a-case-study-of-the-dangers-of-overpaying-for-growth/)). Costco doesn't have to crash for SELL to be right. The business can keep doing well while the stock goes nowhere because it started too expensive.
+
 One thing I had to think about: this is a valuation call, not a prediction that the stock drops next month. When I simulated where the stock could trade in a year based on its normal volatility, the odds of it actually hitting $493 were under 1%. Expensive stocks can stay expensive for a long time, especially ones people trust as much as Costco. My point is that the risk/reward at this price is bad, not that a crash is coming.
 
 ![Valuation ranges vs share price](charts/football_field.png)
@@ -59,7 +65,7 @@ Each run does roughly this:
 - Runs two separate Monte Carlo simulations
 - Saves everything to a SQLite database so I can see how the valuation changes over time
 
-**How the reverse DCF works:** It solves for the one input that makes the DCF equal today's price, four different ways: five years of growth with nothing else changed, growth forever after 2031, years of 10% growth before slowing, and the 2031 operating margin. The first version alone exaggerates what the price needs, so I report all four.
+**How the reverse DCF works:** It solves for the one input that makes the DCF equal today's price, five different ways: five years of growth with nothing else changed, growth forever after 2031, years of 10% growth before slowing, the 2031 operating margin, and the discount rate (which is the return a buyer earns at today's price). The first version alone exaggerates what the price needs, so I report all five. The model also runs the stacked bull case described above and compares its return with the live 10-year Treasury yield.
 
 **Why two simulations?** I originally planned to use the stock's historical volatility to stress-test the DCF, but that mixes two different things. How much a stock's price moves day to day doesn't tell you how uncertain its future cash flows are. So the first simulation reruns the DCF with different business assumptions to get a range for what Costco is worth. The second uses the stock's volatility to see where the price might actually trade in a year. Comparing the two is how I got to the valuation vs timing point above.
 
@@ -77,12 +83,13 @@ All the inputs are in [`assumptions.json`](assumptions.json), so anyone can chan
 - **Discount rate:** Live Treasury yield, a 5% equity risk premium, and a beta from two years of weekly returns, adjusted toward 1 like most data providers do. My first version used one year of daily returns and got a beta of -0.17, which would mean Costco moves opposite to the market. That's not realistic, so the model now checks for it and falls back to Yahoo's published beta if the number looks off.
 - **Long-term growth, 3%:** Roughly in line with long-run nominal GDP.
 - **Monte Carlo ranges:** Each input gets its own bear, base and bull value, and each run draws from all four independently. Growth runs 4 points below to 4 points above the base path, so 3% to 11% a year on average, and the top end is FY2026's pace held for five years. Margin goes from 0.5 points lower to 1 point higher, which covers the margins-reach-5% scenario below. The discount rate moves 1.5 points either way, and long-term growth ranges from 2% to 4%. I skewed margins upward on purpose, which is why the simulation median ($517) is above my base case. Because the draws are independent, it's rare for every input to hit its best case in the same run. That's why the simulation doesn't reach the best corner of the sensitivity table.
-- **Rating rule:** BUY above +10% upside, SELL below -10%, HOLD in between.
+- **Stacked bull case:** A 10-year forecast with growth fading from 9% to 8%, operating margin rising from 3.9% to 4.8%, and a discount rate 1 point below the live WACC. It's in `assumptions.json` under `bull_case` so anyone can change it.
+- **Rating rule:** BUY above +10% upside, SELL below -10%, HOLD in between. The rating comes from the base case, not the bull case.
 
 ## What could prove me wrong
 
 - **Margins could grow a lot more than I expect.** If membership income, advertising and e-commerce push operating margins toward 5 or 6%, the value goes up a lot.
-- **The market might just keep paying up for quality.** Costco has looked expensive on a DCF for years and still beaten the market. If investors accept a lower return for a business this stable, my discount rate is too high.
+- **The market might just keep paying up for quality.** Costco has looked expensive on a DCF for years and still beaten the market. If investors are happy earning about 5.4% a year from a business this stable, the price can stay where it is, and my discount rate is too high for how people actually value Costco.
 - **Costco's runway could be longer than I think.** This is the big one. The price works if Costco keeps growing about 10% a year for around 21 more years. It has done close to that for the last two decades, and new warehouses in Asia and Europe could keep it going.
 
 ## What I learned
@@ -114,7 +121,7 @@ FROM runs ORDER BY run_id DESC;
 
 ```
 ├── valuation_engine.py          the model
-├── assumptions.json             all the inputs
+├── assumptions.json             all the inputs, including the bull case
 ├── Costco_Valuation_Colab.ipynb run it in your browser
 ├── charts/                      charts used in this README
 ├── requirements.txt
@@ -126,6 +133,7 @@ FROM runs ORDER BY run_id DESC;
 - Costco FY2026 earnings release (Sept 24, 2026), investor.costco.com
 - Costco FY2004 results (total revenue $48.1B), [SEC filing](https://www.sec.gov/Archives/edgar/data/0000909832/000119312504167911/dex991.htm), used for the long-run growth rate
 - Analyst ratings and targets from [TipRanks](https://www.tipranks.com/stocks/COST/forecast), October 21, 2026
+- Walmart's 1999-2008 record from [The Rational Walk](https://rationalwalk.com/wal-marts-ten-year-record-a-case-study-of-the-dangers-of-overpaying-for-growth/)
 - Yahoo Finance through the `yfinance` library
 
 *This is a student project, not investment advice. yfinance is an unofficial data source, so numbers can occasionally be delayed or missing. The figures above come from my October 20, 2026 live run, and running the model again will update them.*

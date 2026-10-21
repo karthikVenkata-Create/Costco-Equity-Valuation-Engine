@@ -15,8 +15,10 @@ Pipeline
                    with a sanity check)
   4. DCF           5-year FCFF projection + Gordon-growth terminal value,
                    WACC x terminal-growth sensitivity grid
-  5. REVERSE DCF   what the price is assuming, four ways: 5-year growth, perpetual
-                   growth, years of high growth, and margin
+  5. REVERSE DCF   what the price is assuming, five ways: 5-year growth, perpetual
+                   growth, years of high growth, margin, and the yearly return a
+                   buyer gets at today's price (vs the 10-year Treasury)
+                   + a stacked bull case with every upside lever at once
   6. MONTE CARLO   (a) 10,000 DCF runs with growth / margin / WACC / terminal g drawn
                        from Bear-Base-Bull ranges -> range of intrinsic value
                    (b) 10,000 one-year price paths at COST's realized volatility
@@ -340,6 +342,30 @@ def implied_margin(cfg: dict, wacc: float, price: float) -> float:
     return cfg["dcf_base_case"]["ebit_margin"][-1] + shift
 
 
+def implied_return(cfg: dict, price: float) -> float:
+    """Reverse DCF, version 5: the discount rate that makes the DCF equal the price.
+
+    In other words, the yearly return a buyer at today's price should expect if
+    the forecast in cfg plays out. Compare it with the risk-free rate.
+    """
+    return _solve(lambda w: price - float(dcf_per_share(cfg, w)), 0.035, 0.20)
+
+
+def _line_fade(first: float, last: float, n: int) -> list[float]:
+    return [first + (last - first) * t / (n - 1) for t in range(n)] if n > 1 else [first]
+
+
+def bull_cfg(cfg: dict) -> dict:
+    """Copy of cfg with the stacked bull case from assumptions.json as the forecast."""
+    c = json.loads(json.dumps(cfg))
+    bc, b = cfg["bull_case"], c["dcf_base_case"]
+    n = bc["projection_years"]
+    b["projection_years"] = n
+    b["revenue_growth"] = _line_fade(bc["growth_start"], bc["growth_end"], n)
+    b["ebit_margin"] = _line_fade(bc["margin_start"], bc["margin_end"], n)
+    return c
+
+
 # ----------------------------------------------------------------------------
 # 5. Monte Carlo
 # ----------------------------------------------------------------------------
@@ -455,7 +481,8 @@ CREATE TABLE IF NOT EXISTS runs (
     risk_free_rate REAL, beta REAL, wacc REAL, terminal_growth REAL,
     dcf_value REAL, target_price REAL, rating TEXT, upside REAL,
     implied_5y_growth REAL, implied_terminal_growth REAL, implied_runway_years INTEGER,
-    implied_2031_margin REAL, comps_pe_value REAL, comps_ev_ebitda_value REAL,
+    implied_2031_margin REAL, implied_return REAL, bull_case_value REAL,
+    implied_return_bull REAL, comps_pe_value REAL, comps_ev_ebitda_value REAL,
     mc_dcf_p10 REAL, mc_dcf_p50 REAL, mc_dcf_p90 REAL, mc_share_below_price REAL,
     volatility REAL, prob_price_below_target_1y REAL
 );
@@ -588,7 +615,7 @@ def main(argv: list[str] | None = None) -> dict:
     rw_g = cfg.get("reverse_dcf", {}).get("runway_growth", 0.10)
     rw_years = implied_runway_years(cfg, w.wacc, price, rw_g)
     m_need = implied_margin(cfg, w.wacc, price)
-    banner("4. WHAT IS THE PRICE ASSUMING?  (reverse DCF, four ways)")
+    banner("4. WHAT IS THE PRICE ASSUMING?  (reverse DCF, five ways)")
     print(f"  Base case: {base_avg:.0%} average growth for 5 years, {b['terminal_growth']:.0%} after,"
           f" {b['ebit_margin'][-1]:.1%} margin")
     line("1. Growth for 5 yrs, nothing else changed", pct(g5))
@@ -598,6 +625,29 @@ def main(argv: list[str] | None = None) -> dict:
     line("4. 2031 operating margin, base-case growth", pct(m_need))
     print("  For reference: FY2026 net sales grew 10.1%; revenue has compounded ~8.7%")
     print("  a year since FY2004; FY2026 operating margin was 3.85%.")
+
+    exp_ret = implied_return(cfg, price)
+    print()
+    line("5. Yearly return a buyer gets at this price", pct(exp_ret, 2))
+    line("   10-year Treasury yield", pct(md.risk_free_rate, 2))
+    line("   Extra return for owning the stock", pct(exp_ret - md.risk_free_rate, 2))
+
+    # Stacked bull case ---------------------------------------------------------
+    bull = bull_cfg(cfg) if "bull_case" in cfg else None
+    if bull:
+        bc = cfg["bull_case"]
+        bull_wacc = w.wacc + bc["wacc_shift"]
+        bull_val = float(dcf_per_share(bull, bull_wacc))
+        bull_ret = implied_return(bull, price)
+        banner("4b. STACKED BULL CASE  (every upside lever at once)")
+        print(f"  {bc['projection_years']} years of growth fading {bc['growth_start']:.0%} -> {bc['growth_end']:.0%},"
+              f" margins rising to {bc['margin_end']:.1%}, WACC {pct(bull_wacc, 2)}")
+        line("Bull-case value per share", usd(bull_val))
+        line("vs share price", pct(bull_val / price - 1))
+        line("Yearly return at this price if the bull case happens", pct(bull_ret, 2))
+        line("   Extra return over the 10-year Treasury", pct(bull_ret - md.risk_free_rate, 2))
+    else:
+        bull_val = bull_ret = float("nan")
 
     # 6. Monte Carlo ------------------------------------------------------------
     mc_dcf = monte_carlo_dcf(cfg, w.wacc, n, rng)
@@ -635,6 +685,9 @@ def main(argv: list[str] | None = None) -> dict:
     print(f"\n  To justify the price, Costco needs about {runway_txt} years of {rw_g:.0%} growth, or"
           f"\n  {pct(g_term)} growth forever after 2031. {share_below:.0%} of {n:,} simulated DCFs"
           f"\n  land below today's price.")
+    print(f"  At this price a buyer can expect about {pct(exp_ret)} a year, only "
+          f"{(exp_ret - md.risk_free_rate) * 100:.1f} points more\n  than a 10-year Treasury."
+          + (f" Even the stacked bull case is worth {usd(bull_val, 0)}." if not _bad(bull_val) else ""))
     odds = "under 1%" if prob_hit < 0.01 else f"about {prob_hit:.0%}"
     print(f"  But a valuation gap is not a timing call: at its normal volatility the stock has\n"
           f"  {odds} odds of trading at the target within a year.")
@@ -648,6 +701,7 @@ def main(argv: list[str] | None = None) -> dict:
         "target_price": target, "rating": rating, "upside": upside,
         "implied_5y_growth": g5, "implied_terminal_growth": g_term,
         "implied_runway_years": rw_years, "implied_2031_margin": m_need,
+        "implied_return": exp_ret, "bull_case_value": bull_val, "implied_return_bull": bull_ret,
         "comps_pe_value": implied.get("Peer P/E"), "comps_ev_ebitda_value": implied.get("Peer EV/EBITDA"),
         "mc_dcf_p10": s_dcf["bear_p10"], "mc_dcf_p50": s_dcf["base_p50"], "mc_dcf_p90": s_dcf["bull_p90"],
         "mc_share_below_price": share_below, "volatility": md.volatility,
